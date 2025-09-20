@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>To-Do List App</title>
+	<style>
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background: #f4f6fb;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			justify-content: center;
+			align-items: flex-start;
+			min-height: 100vh;
+		}
+		.todo-container {
+			background: #fff;
+			margin-top: 60px;
+			padding: 32px 28px 24px 28px;
+			border-radius: 12px;
+			box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+			width: 100%;
+			max-width: 400px;
+		}
+		h1 {
+			text-align: center;
+			color: #333;
+			margin-bottom: 24px;
+		}
+		.todo-input-section {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 20px;
+		}
+		.todo-input-section input {
+			flex: 1;
+			padding: 10px;
+			border: 1px solid #d1d5db;
+			border-radius: 6px;
+			font-size: 1rem;
+		}
+		.todo-input-section button {
+			padding: 10px 18px;
+			background: #4f8cff;
+			color: #fff;
+			border: none;
+			border-radius: 6px;
+			font-size: 1rem;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.todo-input-section button:hover {
+			background: #2563eb;
+		}
+		ul.todo-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+		ul.todo-list li {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 10px 0;
+			border-bottom: 1px solid #f0f0f0;
+		}
+		ul.todo-list li:last-child {
+			border-bottom: none;
+		}
+		.todo-text {
+			flex: 1;
+			color: #444;
+			font-size: 1rem;
+		}
+		.todo-text.completed {
+			text-decoration: line-through;
+			color: #aaa;
+		}
+		.todo-actions button {
+			background: none;
+			border: none;
+			color: #ff5c5c;
+			font-size: 1.1rem;
+			cursor: pointer;
+			margin-left: 8px;
+			transition: color 0.2s;
+		}
+		.todo-actions button:hover {
+			color: #d90429;
+		}
+		.todo-actions .complete-btn {
+			color: #4f8cff;
+		}
+		.todo-actions .complete-btn.completed {
+			color: #aaa;
+			cursor: default;
+		}
+	</style>
+</head>
+<body>
+	<div class="todo-container">
+		<h1>To-Do List</h1>
+		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+			<button id="settings-btn" title="Settings" style="background: none; border: none; font-size: 1.3rem; cursor: pointer;">⚙️</button>
+			<button id="delete-finished-btn" title="Delete finished tasks" style="background: #ff5c5c; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.95rem; cursor: pointer;">Delete Finished</button>
+		</div>
+		<div class="todo-input-section">
+			<input type="text" id="todo-input" placeholder="Add a new task..." />
+			<button id="add-btn">Add</button>
+		</div>
+		<ul class="todo-list" id="todo-list"></ul>
+	</div>
+	<!-- Settings Modal -->
+	<div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:1000; justify-content:center; align-items:center;">
+		<div style="background:#fff; padding:24px 28px; border-radius:10px; min-width:260px; box-shadow:0 2px 16px rgba(0,0,0,0.12);">
+			<h2 style="margin-top:0; font-size:1.2rem;">Background Template</h2>
+			<div style="margin-bottom:16px;">
+				<label><input type="radio" name="bg-template" value="default"> Default</label><br>
+				<label><input type="radio" name="bg-template" value="dark"> Dark</label><br>
+				<label><input type="radio" name="bg-template" value="blue"> Blue</label><br>
+				<label><input type="radio" name="bg-template" value="image"> Image</label>
+			</div>
+			<button id="close-settings" style="background:#4f8cff; color:#fff; border:none; border-radius:6px; padding:6px 16px; cursor:pointer;">Close</button>
+		</div>
+	</div>
+	<script>
+		const todoInput = document.getElementById('todo-input');
+		const addBtn = document.getElementById('add-btn');
+		const todoList = document.getElementById('todo-list');
+		const settingsBtn = document.getElementById('settings-btn');
+		const settingsModal = document.getElementById('settings-modal');
+		const closeSettings = document.getElementById('close-settings');
+		const deleteFinishedBtn = document.getElementById('delete-finished-btn');
+
+		// Load background template from localStorage
+		let bgTemplate = localStorage.getItem('bgTemplate') || 'default';
+
+		// --- TODOS API ---
+		let todos = [];
+
+		async function fetchTodos() {
+			const res = await fetch('/api/todos');
+			todos = await res.json();
+			renderTodos();
+		}
+
+		async function addTodo(text) {
+			const res = await fetch('/api/todos', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text })
+			});
+			const todo = await res.json();
+			todos.push(todo);
+			renderTodos();
+		}
+
+		async function completeTodo(idx) {
+			const todo = todos[idx];
+			if (!todo || todo.completed) return;
+			const res = await fetch(`/api/todos/${todo.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ completed: true })
+			});
+			todos[idx] = await res.json();
+			renderTodos();
+		}
+
+		async function deleteTodo(idx) {
+			const todo = todos[idx];
+			if (!todo) return;
+			await fetch(`/api/todos/${todo.id}`, { method: 'DELETE' });
+			todos.splice(idx, 1);
+			renderTodos();
+		}
+
+		async function deleteFinishedTodos() {
+			await fetch('/api/todos/finished', { method: 'DELETE' });
+			todos = todos.filter(todo => !todo.completed);
+			renderTodos();
+		}
+
+		function applyBackground(template) {
+			const body = document.body;
+			body.style.background = '';
+			body.style.backgroundImage = '';
+			switch(template) {
+				case 'default':
+					body.style.background = '#f4f6fb';
+					break;
+				case 'dark':
+					body.style.background = '#23272f';
+					break;
+				case 'blue':
+					body.style.background = 'linear-gradient(135deg, #4f8cff 0%, #a0c4ff 100%)';
+					break;
+				case 'image':
+					body.style.backgroundImage = 'url(https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80)';
+					body.style.backgroundSize = 'cover';
+					body.style.backgroundPosition = 'center';
+					break;
+			}
+		}
+
+		function renderTodos() {
+			todoList.innerHTML = '';
+			todos.forEach((todo, idx) => {
+				const li = document.createElement('li');
+				const textSpan = document.createElement('span');
+				textSpan.className = 'todo-text' + (todo.completed ? ' completed' : '');
+				textSpan.textContent = todo.text;
+
+				const actions = document.createElement('div');
+				actions.className = 'todo-actions';
+
+				const completeBtn = document.createElement('button');
+				completeBtn.innerHTML = todo.completed ? '✓' : '✔';
+				completeBtn.className = 'complete-btn' + (todo.completed ? ' completed' : '');
+				completeBtn.title = todo.completed ? 'Completed' : 'Mark as complete';
+				completeBtn.disabled = todo.completed;
+				completeBtn.onclick = () => completeTodo(idx);
+
+				const deleteBtn = document.createElement('button');
+				deleteBtn.innerHTML = '🗑';
+				deleteBtn.title = 'Delete';
+				deleteBtn.onclick = () => deleteTodo(idx);
+
+				actions.appendChild(completeBtn);
+				actions.appendChild(deleteBtn);
+
+				li.appendChild(textSpan);
+				li.appendChild(actions);
+				todoList.appendChild(li);
+			});
+		}
+
+		addBtn.onclick = async () => {
+			const text = todoInput.value.trim();
+			if (text) {
+				await addTodo(text);
+				todoInput.value = '';
+				todoInput.focus();
+			}
+		};
+
+		todoInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				addBtn.click();
+			}
+		});
+
+		// Settings modal logic
+		settingsBtn.onclick = () => {
+			settingsModal.style.display = 'flex';
+			// Set radio to current
+			const radios = settingsModal.querySelectorAll('input[name="bg-template"]');
+			radios.forEach(r => { r.checked = (r.value === bgTemplate); });
+		};
+		closeSettings.onclick = () => {
+			settingsModal.style.display = 'none';
+		};
+		settingsModal.addEventListener('click', (e) => {
+			if (e.target === settingsModal) settingsModal.style.display = 'none';
+		});
+		settingsModal.querySelectorAll('input[name="bg-template"]').forEach(radio => {
+			radio.addEventListener('change', (e) => {
+				bgTemplate = e.target.value;
+				localStorage.setItem('bgTemplate', bgTemplate);
+				applyBackground(bgTemplate);
+			});
+		});
+
+		// Delete finished tasks
+		deleteFinishedBtn.onclick = () => {
+			deleteFinishedTodos();
+		};
+
+		// Initial render
+		applyBackground(bgTemplate);
+		fetchTodos();
+	</script>
+</body>
+</html>

@@ -34,10 +34,20 @@
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/
 	 */
-		"assets": { "directory": "./public/", "binding": "ASSETS" },
-		"kv_namespaces": [
-			{ "binding": "TODOS", "id": "<YOUR_KV_NAMESPACE_ID>" }
-		],
+	"assets": {
+		"directory": "./public/",
+		"binding": "ASSETS"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "TODOS",
+			"id": "bb30cd35c13f4dd2a44a16fc6e0ceff8"
+		},
+		{
+			"binding": "kiwi",
+			"id": "bb30cd35c13f4dd2a44a16fc6e0ceff8"
+		}
+	],
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

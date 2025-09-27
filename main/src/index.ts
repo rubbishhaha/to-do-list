@@ -41,16 +41,22 @@ export default {
 
 		// API: /api/todos
 		if (pathname === '/api/todos' && req.method === 'GET') {
+			const url = new URL(req.url);
+			const userId = url.searchParams.get('userId');
 			const todos = await getTodos(env);
-			return Response.json(todos);
+			if (userId) {
+				return Response.json(todos.filter((t: any) => t.userId === userId));
+			}
+			return Response.json([]);
 		}
 
 		if (pathname === '/api/todos' && req.method === 'POST') {
 			const body = await req.json() as any;
 			const text = body.text;
-			if (!text) return new Response('Missing text', { status: 400 });
+			const userId = body.userId;
+			if (!text || !userId) return new Response('Missing text or userId', { status: 400 });
 			const todos = await getTodos(env);
-			const todo = { id: getId(), text, completed: false };
+			const todo = { id: getId(), text, completed: false, userId };
 			todos.push(todo);
 			await saveTodos(env, todos);
 			return Response.json(todo);

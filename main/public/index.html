@@ -127,6 +127,23 @@
 		</div>
 	</div>
 	<script>
+		// --- USER ID LOGIC ---
+		let userId = localStorage.getItem('userId');
+		if (!userId) {
+			userId = crypto.randomUUID();
+			localStorage.setItem('userId', userId);
+		}
+
+		// --- KV STORE FUNCTION ---
+		async function storeKV(key, value) {
+			// The API endpoint should be implemented in your Cloudflare Worker
+			await fetch('/api/set', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ userId, key, value })
+			});
+		}
+
 		const todoInput = document.getElementById('todo-input');
 		const addBtn = document.getElementById('add-btn');
 		const todoList = document.getElementById('todo-list');
@@ -142,7 +159,7 @@
 		let todos = [];
 
 		async function fetchTodos() {
-			const res = await fetch('/api/todos');
+			const res = await fetch('/api/todos?userId=' + encodeURIComponent(userId));
 			todos = await res.json();
 			renderTodos();
 		}
@@ -151,7 +168,7 @@
 			const res = await fetch('/api/todos', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ text })
+				body: JSON.stringify({ text, userId })
 			});
 			const todo = await res.json();
 			todos.push(todo);
